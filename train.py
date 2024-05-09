@@ -6,6 +6,7 @@ from torch.utils.data import DataLoader
 from torchvision import transforms
 import os
 
+#os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:32"
 
 if __name__ == '__main__':
 
@@ -14,7 +15,7 @@ if __name__ == '__main__':
     iterations = 2000
     it_save = 100  # save model every 100 iterations
     n_cpu = 6
-    seq_length = 64
+    seq_length = 32
     bs = 22  # batch size
     k = 10  # frozen layers
 

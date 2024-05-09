@@ -21,6 +21,14 @@ df['events'] = df['events'].apply(lambda x: x[0])
 df['bbox'] = df['bbox'].apply(lambda x: x[0])
 df['split'] = df['split'].apply(lambda x: x[0][0])
 
+
+youtube_ids = set()
+for youtube_id in df['youtube_id']:
+    youtube_ids.add(youtube_id)
+fil = open('youtube_ids.txt', 'w')
+fil.write('\n'.join(youtube_ids) + '\n')
+fil.close()
+
 df.index = df.index.astype(int)
 df.to_pickle('golfDB.pkl')
 

@@ -16,7 +16,8 @@ event_names = {
     4: 'Mid-downswing (arm parallel)',
     5: 'Impact',
     6: 'Mid-follow-through (shaft parallel)',
-    7: 'Finish'
+    7: 'Finish',
+    8: 'Not'
 }
 
 
@@ -52,15 +53,17 @@ class SampleVideo(Dataset):
         cap.release()
         labels = np.zeros(len(images)) # only for compatibility with transforms
         sample = {'images': np.asarray(images), 'labels': np.asarray(labels)}
+        print(sample['images'].shape)
         if self.transform:
             sample = self.transform(sample)
+            print(sample['images'].shape)
         return sample
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', '--path', help='Path to video that you want to test', default='test_video.mp4')
-    parser.add_argument('-s', '--seq-length', type=int, help='Number of frames to use per forward pass', default=64)
+    parser.add_argument('-s', '--seq-length', type=int, help='Number of frames to use per forward pass', default=16)
     args = parser.parse_args()
     seq_length = args.seq_length
 
@@ -94,6 +97,7 @@ if __name__ == '__main__':
     print('Testing...')
     for sample in dl:
         images = sample['images']
+        print(images.shape)
         # full samples do not fit into GPU memory so evaluate sample in 'seq_length' batches
         batch = 0
         while batch * seq_length < images.shape[1]:
@@ -101,7 +105,9 @@ if __name__ == '__main__':
                 image_batch = images[:, batch * seq_length:, :, :, :]
             else:
                 image_batch = images[:, batch * seq_length:(batch + 1) * seq_length, :, :, :]
+            print(image_batch.shape)
             logits = model(image_batch.cuda())
+            print(logits.shape)
             if batch == 0:
                 probs = F.softmax(logits.data, dim=1).cpu().numpy()
             else:
@@ -112,14 +118,31 @@ if __name__ == '__main__':
     print('Predicted event frames: {}'.format(events))
     cap = cv2.VideoCapture(args.path)
 
+    i = 0
+    while False:
+        ret, img = cap.read()
+        if not ret:
+            break
+        i += 1
+        #if i not in events:
+        #    continue
+        idx = np.argmax(probs[i], axis=0)
+        print(probs[i])
+        cv2.putText(img, '{:.3f}'.format(probs[i,idx]), (20, 20), cv2.FONT_HERSHEY_DUPLEX, 0.75, (0, 0, 255))
+        cv2.imshow(event_names[idx], img)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+
     confidence = []
     for i, e in enumerate(events):
         confidence.append(probs[e, i])
     print('Condifence: {}'.format([np.round(c, 3) for c in confidence]))
 
+    cap = cv2.VideoCapture(args.path)
     for i, e in enumerate(events):
         cap.set(cv2.CAP_PROP_POS_FRAMES, e)
         _, img = cap.read()
+        #mg = cv2.resize(img, None, None, 0.3, 0.3)
         cv2.putText(img, '{:.3f}'.format(confidence[i]), (20, 20), cv2.FONT_HERSHEY_DUPLEX, 0.75, (0, 0, 255))
         cv2.imshow(event_names[i], img)
         cv2.waitKey(0)
